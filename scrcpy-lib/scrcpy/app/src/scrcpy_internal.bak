@@ -1,0 +1,74 @@
+#ifndef SCRCPY_INTERNAL_H
+#define SCRCPY_INTERNAL_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "scrcpy.h"
+
+#include "common.h"
+#include "controller.h"
+#include "decoder.h"
+#include "events.h"
+#include "file_handler.h"
+#include "input_manager.h"
+#include "recorder.h"
+#include "screen.h"
+#include "server.h"
+#include "stream.h"
+#include "tiny_xpm.h"
+#include "util/log.h"
+#include "util/net.h"
+#ifdef HAVE_V4L2
+# include "v4l2_sink.h"
+#endif
+
+void
+av_log_callback(void *avcl, int level, const char *fmt, va_list vl);
+
+void
+stream_on_eos(struct stream *stream, void *userdata);
+
+bool
+sdl_init_and_configure(bool display, const char *render_driver,
+                       bool disable_screensaver);
+
+struct scrcpy {
+    struct server server;
+    struct screen screen;
+    struct stream stream;
+    struct decoder decoder;
+    struct recorder recorder;
+#ifdef HAVE_V4L2
+    struct sc_v4l2_sink v4l2_sink;
+#endif
+    struct controller controller;
+    struct file_handler file_handler;
+    struct input_manager input_manager;
+    struct stream_callbacks stream_cbs;
+
+    // status
+    bool server_started;
+    bool file_handler_initialized;
+    bool recorder_initialized;
+#ifdef HAVE_V4L2
+    bool v4l2_sink_initialized;
+#endif
+    bool stream_started;
+    bool controller_initialized;
+    bool controller_started;
+    bool screen_initialized;
+};
+
+struct scrcpy *
+scrcpy_embedded_start(const struct scrcpy_options *options);
+
+void
+scrcpy_embedded_stop(struct scrcpy *s);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

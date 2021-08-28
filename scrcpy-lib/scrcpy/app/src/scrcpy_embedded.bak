@@ -1,0 +1,27 @@
+#ifndef SCRCPY_EMBEDDED_H
+#define SCRCPY_EMBEDDED_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "scrcpy.h"
+
+// fake struct to return to Java, so that JavaCPP doesn't have to
+// parse all the types inside real scrcpy.
+// struct scrcpy_process {
+//    bool success;
+//};
+
+//struct scrcpy_process *
+void *
+scrcpy_embedded_start(const struct scrcpy_options *options);
+
+void
+scrcpy_embedded_stop(void *s);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
