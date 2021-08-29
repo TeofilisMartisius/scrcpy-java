@@ -7,6 +7,8 @@ import org.bytedeco.javacpp.Pointer;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,16 +19,8 @@ import static org.bytedeco.ffmpeg.global.swscale.sws_scale;
 import static org.scrcpy.ScrcpyLibrary.*;
 
 public class ScrcpyInvoke {
-    public static void main(String arg[]) throws Exception {
-        JFrame jFrame = new JFrame();
 
-        JLabel jLabel = new JLabel();
-        jFrame.getContentPane().setLayout(new FlowLayout());
-        jFrame.getContentPane().add(jLabel);
-        jFrame.pack();
-        jFrame.setVisible(true);
-        jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // if you want the X
-
+    public static ScrcpyLibrary.scrcpy_options defaultOptions() {
         // TODO: Define default options in Java, parsing scrcpy.h default options fails.
         ScrcpyLibrary.scrcpy_options opt = new ScrcpyLibrary.scrcpy_options();
         opt.log_level(SC_LOG_LEVEL_INFO);
@@ -72,7 +66,49 @@ public class ScrcpyInvoke {
         // changes from default
         opt.force_decoder(true);
         opt.display(false);
+        return opt;
+    }
 
+    public static Rectangle getDisplayedImageDimensions(JFrame jFrame, ScrcpyLibrary.size androidSize) {
+        // let's try to fit scrcpy image into screen
+        GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        Rectangle bounds = env.getMaximumWindowBounds();
+        System.out.println("Screen Bounds: " + bounds);
+
+        Insets insets = jFrame.getInsets();
+        bounds.width = bounds.width - insets.left - insets.right - 10;
+        bounds.height = bounds.height - insets.top - insets.bottom - 10;
+        System.out.println("Screen Bounds Adjusted: " + bounds);
+        ((BorderLayout) jFrame.getLayout()).setHgap(0);
+        ((BorderLayout) jFrame.getLayout()).setVgap(0);
+
+        Rectangle dimImage = new Rectangle();
+        if (bounds.width >= androidSize.width() && bounds.height >= androidSize.height()) {
+            // everything fits
+            dimImage.width = androidSize.width();
+            dimImage.height = androidSize.height();
+        } else {
+            // we need to shrink the image
+            double widthRatio = (double) androidSize.width() / bounds.width;
+            double heightRatio = (double) androidSize.height() / bounds.height;
+
+            double ratio = Math.max(widthRatio, heightRatio);
+            dimImage.width = (int) (androidSize.width() / ratio);
+            dimImage.height = (int) (androidSize.height() / ratio);
+        }
+        return dimImage;
+    }
+
+    public static void main(String arg[]) throws Exception {
+        JFrame jFrame = new JFrame();
+
+        JLabel jLabel = new JLabel();
+        jFrame.getContentPane().setLayout(new FlowLayout());
+        jFrame.getContentPane().add(jLabel);
+        jFrame.pack();
+        jFrame.setVisible(true);
+
+        ScrcpyLibrary.scrcpy_options opt = defaultOptions();
         scrcpy_process process = ScrcpyLibrary.scrcpy_start(opt);
         System.out.println("process=" + process);
         System.out.println("process size w=" + process.frame_size().width() + " h=" + process.frame_size().height());
@@ -80,33 +116,18 @@ public class ScrcpyInvoke {
             System.out.println("FAIL");
             System.exit(0);
         }
-        // let's try to fit scrcpy image into screen
 
-        GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        Rectangle bounds = env.getMaximumWindowBounds();
-        System.out.println("Screen Bounds: " + bounds );
+        jFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                System.out.println("Stopping scrcpy");
+                ScrcpyLibrary.scrcpy_stop(process);
+                System.out.println("Stopped scrcpy, exiting");
+                System.exit(0);
+            }
+        });
 
-        Insets insets = jFrame.getInsets();
-        bounds.width = bounds.width - insets.left - insets.right - 10;
-        bounds.height = bounds.height - insets.top - insets.bottom - 10;
-        System.out.println("Screen Bounds Adjusted: " + bounds );
-        ((BorderLayout)jFrame.getLayout()).setHgap(0);
-        ((BorderLayout)jFrame.getLayout()).setVgap(0);
-
-        Rectangle dimImage = new Rectangle();
-        if (bounds.width >= process.frame_size().width() && bounds.height >= process.frame_size().height()) {
-            // everything fits
-            dimImage.width = process.frame_size().width();
-            dimImage.height = process.frame_size().height();
-        } else {
-            // we need to shrink the image
-            double widthRatio = (double) process.frame_size().width() / bounds.width;
-            double heightRatio = (double) process.frame_size().height() / bounds.height;
-
-            double ratio = Math.max(widthRatio, heightRatio);
-            dimImage.width = (int)(process.frame_size().width() / ratio);
-            dimImage.height = (int)(process.frame_size().height() / ratio);
-        }
+        Rectangle dimImage = getDisplayedImageDimensions(jFrame, process.frame_size());
 
         Open_Pointer open_function = new Open_Pointer() {
             @Override
@@ -123,21 +144,25 @@ public class ScrcpyInvoke {
         };
 
         AtomicBoolean first = new AtomicBoolean(true);
+
+        BufferedImage img = new BufferedImage(dimImage.width,
+                dimImage.height, BufferedImage.TYPE_3BYTE_BGR);
+
         AVFrame rgbFrame = av_frame_alloc();
         rgbFrame.format(AV_PIX_FMT_BGR24);
-        BufferedImage img = new BufferedImage(process.frame_size().width(),
-                process.frame_size().height(), BufferedImage.TYPE_3BYTE_BGR);
-        rgbFrame.width(process.frame_size().width());
-        rgbFrame.height(process.frame_size().height());
+        rgbFrame.width(dimImage.width);
+        rgbFrame.height(dimImage.height);
+        // align must be 1 for this to work, as Java aligns to 1
         int ret = av_image_alloc(rgbFrame.data(),
                 rgbFrame.linesize(),
                 rgbFrame.width(),
                 rgbFrame.height(),
                 rgbFrame.format(),
-                24);
+                1);
         if (ret < 0) {
             throw new RuntimeException("could not allocate buffer!");
         }
+        // Use this to scale inside ffmpeg. Faster than doing it in Java
         SwsContext sws_ctx = sws_getContext(
                 process.frame_size().width(), process.frame_size().height(), AV_PIX_FMT_YUV420P,
                 rgbFrame.width(), rgbFrame.height(), rgbFrame.format(),
@@ -151,8 +176,7 @@ public class ScrcpyInvoke {
                         yuv420Frame.height(), rgbFrame.data(), rgbFrame.linesize());
                 DataBufferByte buffer = (DataBufferByte) img.getRaster().getDataBuffer();
                 rgbFrame.data(0).get(buffer.getData());
-                Image scaled = img.getScaledInstance(dimImage.width, dimImage.height, Image.SCALE_FAST);
-                jLabel.setIcon(new ImageIcon(scaled));
+                jLabel.setIcon(new ImageIcon(img));
                 if (first.get()) {
                     jFrame.pack();
                     jFrame.setVisible(true);
@@ -165,10 +189,6 @@ public class ScrcpyInvoke {
         scrcpy_add_sink(process, open_function, close_function, frame_function);
 
         System.out.println("sleeping start");
-        Thread.sleep(10000);
-        System.out.println("sleeping over");
-        ScrcpyLibrary.scrcpy_stop(process);
-        System.out.println("terminated");
-        System.exit(0);
+        Thread.sleep(Long.MAX_VALUE);
     }
 }
