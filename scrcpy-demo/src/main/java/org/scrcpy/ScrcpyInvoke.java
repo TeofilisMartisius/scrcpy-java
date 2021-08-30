@@ -7,6 +7,8 @@ import org.bytedeco.javacpp.Pointer;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
@@ -188,7 +190,73 @@ public class ScrcpyInvoke {
 
         scrcpy_add_sink(process, open_function, close_function, frame_function);
 
+        jLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+//                System.out.println("DOWN x="+e.getX() +" y="+e.getY()+" b="+e.getButton());
+                control_msg msg = new control_msg();
+                msg.type(CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT);
+
+                msg.inject_touch_event_pointer_id(POINTER_ID_MOUSE);
+                msg.inject_touch_event_position(translate(process, dimImage, e.getX(), e.getY()));
+                // 1.0 => down
+                // 0.0 => up
+                msg.inject_touch_event_pressure(1.0f);
+                msg.inject_touch_event_buttons(convert_buttons(e.getButton()));
+
+                scrcpy_push_event(process, msg);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+//                System.out.println("UP x="+e.getX() +" y="+e.getY()+" b="+e.getButton());
+                control_msg msg = new control_msg();
+                msg.type(CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT);
+
+                msg.inject_touch_event_pointer_id(POINTER_ID_MOUSE);
+                msg.inject_touch_event_position(translate(process, dimImage, e.getX(), e.getY()));
+                // 1.0 => down
+                // 0.0 => up
+                msg.inject_touch_event_pressure(0.0f);
+                msg.inject_touch_event_buttons(convert_buttons(e.getButton()));
+
+                scrcpy_push_event(process, msg);
+            }
+        });
+
         System.out.println("sleeping start");
         Thread.sleep(Long.MAX_VALUE);
+    }
+
+    public static int convert_buttons(int javaButton) {
+        int androidButton = 0;
+        if (javaButton == MouseEvent.BUTTON1) {
+            androidButton |= AMOTION_EVENT_BUTTON_PRIMARY;
+        }
+        if (javaButton == MouseEvent.BUTTON2) {
+            androidButton |= AMOTION_EVENT_BUTTON_SECONDARY;
+        }
+        if (javaButton == MouseEvent.BUTTON3) {
+            androidButton |= AMOTION_EVENT_BUTTON_TERTIARY;
+        }
+        return androidButton;
+    }
+
+    public static _position translate(scrcpy_process p, Rectangle dimImage, int x, int y) {
+        point point = new point();
+        int tx = p.frame_size().width() * x / dimImage.width;
+        int ty = p.frame_size().height() * y / dimImage.height;
+        point.x(tx);
+        point.y(ty);
+
+        size sz = new size();
+        sz.width(p.frame_size().width());
+        sz.height(p.frame_size().height());
+
+        _position pos = new _position();
+        pos.point(point);
+        pos.screen_size(sz);
+
+        return pos;
     }
 }
