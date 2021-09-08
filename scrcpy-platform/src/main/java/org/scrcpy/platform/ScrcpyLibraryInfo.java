@@ -1,4 +1,4 @@
-package org.scrcpy;
+package org.scrcpy.platform;
 
 import org.bytedeco.javacpp.annotation.Platform;
 import org.bytedeco.javacpp.annotation.Properties;
@@ -16,7 +16,7 @@ import org.bytedeco.javacpp.tools.InfoMapper;
                 preload = {},
                 link = {"scrcpy"}
         ),
-        target = "org.scrcpy.ScrcpyLibrary"
+        target = "org.scrcpy.platform.ScrcpyLibrary"
 )
 //@Namespace("C")
 public class ScrcpyLibraryInfo implements InfoMapper {

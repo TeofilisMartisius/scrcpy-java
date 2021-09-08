@@ -1,31 +1,25 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>scrcpy-top</artifactId>
+        <groupId>org.scrcpy</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.scrcpy</groupId>
-        <artifactId>scrcpy-top</artifactId>
-        <version>1.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
-    </parent>
-
-    <artifactId>scrcpy-demo</artifactId>
+    <artifactId>scrcpy</artifactId>
     <name>${project.artifactId}</name>
 
     <dependencies>
         <dependency>
             <groupId>org.scrcpy</groupId>
-            <artifactId>scrcpy</artifactId>
+            <artifactId>scrcpy-platform</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
-        <!-- TESTING -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.1</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
+
     <build>
         <plugins>
             <plugin>
@@ -35,4 +29,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>

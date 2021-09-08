@@ -9,8 +9,27 @@
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.showDeprecation>true</maven.compiler.showDeprecation>
+        <maven.compiler.showWarnings>true</maven.compiler.showWarnings>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <!-- earlier versions have extra nasty failures with java module system -->
+                <version>3.8.1</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <modules>
-        <module>scrcpy-lib</module>
+        <module>scrcpy-platform</module>
+        <module>scrcpy</module>
         <module>scrcpy-demo</module>
     </modules>
 
