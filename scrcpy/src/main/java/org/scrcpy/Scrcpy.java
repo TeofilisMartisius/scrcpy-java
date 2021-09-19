@@ -19,7 +19,10 @@ import static org.bytedeco.ffmpeg.global.avutil.*;
 import static org.bytedeco.ffmpeg.global.swscale.sws_scale;
 import static org.scrcpy.platform.ScrcpyLibrary.*;
 
-public class Scrcpy {
+/**
+ * Real scrcpy implementation using scrcpy Native library.
+ */
+public class Scrcpy implements IScrcpy {
     private final ScrcpyLibrary.scrcpy_options options;
     private ScrcpyLibrary.scrcpy_process process = null;
 
@@ -40,6 +43,7 @@ public class Scrcpy {
         ScrcpyLibrary.scrcpy_stop(this.process);
     }
 
+    @Override
     public Dimension originalSize() {
         if (process == null) {
             throw new IllegalStateException("Scrcpy Process is not started");
@@ -51,6 +55,7 @@ public class Scrcpy {
     // TODO: some way to unregister?
     private final Map<Consumer<BufferedImage>, ScreenListener> listeners = new HashMap<>();
 
+    @Override
     public void registerScreenListener(Dimension size, Consumer<BufferedImage> onScreenRefresh) {
         ScreenListener listener = new ScreenListener(originalSize(), size, onScreenRefresh);
         listeners.put(onScreenRefresh, listener);
@@ -155,6 +160,7 @@ public class Scrcpy {
         return androidButton;
     }
 
+    @Override
     public void mouseDown(Point p, int buttons) {
         control_msg msg = new control_msg();
         msg.type(CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT);
@@ -170,6 +176,7 @@ public class Scrcpy {
         scrcpy_push_event(process, msg);
     }
 
+    @Override
     public void mouseUp(Point p, int buttons) {
         control_msg msg = new control_msg();
         msg.type(CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT);
@@ -183,55 +190,6 @@ public class Scrcpy {
         msg.inject_keycode_action(AMOTION_EVENT_ACTION_UP);
         System.out.format("Mouse Up Scrcpy action=%d %d %d  press=%.1f btn=%d\n", msg.inject_touch_event_action(), p.x, p.y, msg.inject_touch_event_pressure(), msg.inject_touch_event_buttons());
         scrcpy_push_event(process, msg);
-    }
-
-    public static ScrcpyLibrary.scrcpy_options defaultOptions() {
-        // TODO: Define default options in Java, parsing scrcpy.h default options fails.
-        ScrcpyLibrary.scrcpy_options opt = new ScrcpyLibrary.scrcpy_options();
-        opt.log_level(SC_LOG_LEVEL_INFO);
-        opt.record_format(SC_RECORD_FORMAT_AUTO);
-
-        sc_port_range port_range = new sc_port_range();
-        port_range.first((short) DEFAULT_LOCAL_PORT_RANGE_FIRST);
-        port_range.last((short) DEFAULT_LOCAL_PORT_RANGE_LAST);
-        opt.port_range(port_range);
-
-        sc_shortcut_mods shortcut_mods = new sc_shortcut_mods(2);
-        shortcut_mods.data(0, SC_MOD_LSUPER);
-        shortcut_mods.data(1, SC_MOD_LSUPER);
-        shortcut_mods.count(2);
-        opt.shortcut_mods(shortcut_mods);
-
-        opt.max_size((short) 0);
-        opt.bit_rate(DEFAULT_BIT_RATE);
-        opt.max_fps((short) 0);
-        opt.lock_video_orientation(SC_LOCK_VIDEO_ORIENTATION_UNLOCKED);
-        opt.rotation((byte) 0);
-        opt.window_x((short) SC_WINDOW_POSITION_UNDEFINED);
-        opt.window_y((short) SC_WINDOW_POSITION_UNDEFINED);
-        opt.window_width((short) 0);
-        opt.window_height((short) 0);
-        opt.display_id(0);
-        opt.show_touches(false);
-        opt.fullscreen(false);
-        opt.always_on_top(false);
-        opt.control(true);
-        opt.display(true);
-        opt.turn_screen_off(false);
-        opt.prefer_text(false);
-        opt.window_borderless(false);
-        opt.mipmaps(true);
-        opt.stay_awake(false);
-        opt.force_adb_forward(false);
-        opt.disable_screensaver(false);
-        opt.forward_key_repeat(true);
-        opt.forward_all_clicks(false);
-        opt.legacy_paste(false);
-        opt.power_off_on_close(false);
-        // changes from default
-        opt.force_decoder(true);
-        opt.display(false);
-        return opt;
     }
 
 }

@@ -1,7 +1,7 @@
 package org.scrcpy.demo;
 
 import org.scrcpy.IScrcpy;
-import org.scrcpy.Scrcpy;
+import org.scrcpy.ScrcpyRecorded;
 
 import javax.swing.*;
 import java.awt.*;
@@ -9,9 +9,12 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
+import java.net.URL;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class ScrcpyInvoke {
+// TODO: generalize and reuse with ScrcpyInvoke
+public class ScrcpyRecordedDemo {
 
     public static Dimension getDisplayedImageDimensions(JFrame jFrame, Dimension androidSize) {
         // let's try to fit scrcpy image into screen
@@ -52,11 +55,9 @@ public class ScrcpyInvoke {
         jFrame.pack();
         jFrame.setVisible(true);
 
-        IScrcpy scrcpy = new Scrcpy(IScrcpy.defaultOptions());
-        if (!scrcpy.start()) {
-            System.out.println("FAIL");
-            System.exit(0);
-        }
+        URL url = ScrcpyRecordedDemo.class.getResource("/recorded.mkv");
+        File f = new File(url.toURI());
+        IScrcpy scrcpy = new ScrcpyRecorded(f.getAbsolutePath());
 
         jFrame.addWindowListener(new WindowAdapter() {
             @Override
@@ -96,6 +97,11 @@ public class ScrcpyInvoke {
                 scrcpy.mouseUp(p, e.getButton());
             }
         });
+
+        if (!scrcpy.start()) {
+            System.out.println("FAIL");
+            System.exit(0);
+        }
 
         System.out.println("sleeping start");
         Thread.sleep(Long.MAX_VALUE);
